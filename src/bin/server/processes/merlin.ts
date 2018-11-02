@@ -7,6 +7,19 @@ import URI from "vscode-uri";
 import { merlin } from "../../../lib";
 import Session from "../session";
 
+function isWinPath(uri: string) {
+  return /(\w)%3A/.test(uri);
+}
+
+function winPath2unix(uri: string) {
+  return uri.replace("\\", "/").replace(/(\w)%3A/, "/mnt/$1");
+}
+
+function getURIPath(id: LSP.TextDocumentIdentifier) {
+  const path = URI.parse(id.uri).fsPath;
+  return isWinPath(path) ? winPath2unix(path) : path;
+}
+
 export default class Merlin implements LSP.Disposable {
   private readonly queue: async.AsyncPriorityQueue<merlin.Task>;
   private readonly readline: readline.ReadLine;
@@ -81,7 +94,7 @@ export default class Merlin implements LSP.Disposable {
     // this.session.connection.console.log(
     //   JSON.stringify({ query, id, priority }),
     // );
-    const context: ["auto", string] | undefined = id ? ["auto", URI.parse(id.uri).fsPath] : undefined;
+    const context: ["auto", string] | undefined = id ? ["auto", getURIPath(id)] : undefined;
     const request = context ? { context, query } : query;
     return new Promise(resolve => this.queue.push(new merlin.Task(request, token), priority, resolve));
   }
@@ -111,7 +124,7 @@ export default class Merlin implements LSP.Disposable {
     // this.session.connection.console.log(
     //   JSON.stringify({ query, id, priority }),
     // );
-    const context: ["auto", string] | undefined = id ? ["auto", URI.parse(id.uri).fsPath] : undefined;
+    const context: ["auto", string] | undefined = id ? ["auto", getURIPath(id)] : undefined;
     const request = context ? { context, query } : query;
     return new Promise(resolve => this.queue.push(new merlin.Task(request), 0, resolve));
   }
